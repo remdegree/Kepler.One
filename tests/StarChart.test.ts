@@ -91,4 +91,17 @@ describe("StarChart", () => {
       'StarChart: Snapshot "unknown-id" was not found.'
     );
   });
+
+  it("stores and retrieves snapshot labels", () => {
+    const chart = new StarChart<{ name: string }>();
+
+    const captured = chart.capture(
+      { name: "Kepler" },
+      { label: "Origin Chart" }
+    );
+
+    expect(captured.label).toBe("Origin Chart");
+    expect(chart.get(captured.id)?.label).toBe("Origin Chart");
+    expect(chart.list()[0].label).toBe("Origin Chart");
+  });
 });

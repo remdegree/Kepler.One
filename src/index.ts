@@ -6,4 +6,4 @@
  * A framework-agnostic change detection library.
  */
 
-export {};
+export * from './core/observatory';
