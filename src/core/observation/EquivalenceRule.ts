@@ -201,5 +201,69 @@ export function areEquivalent(
 /**
  * Default equivalence rule used by kepler.one.
  */
-export const defaultEquivalenceRule: EquivalenceRule =
-  areEquivalent;
+export const defaultEquivalenceRule: EquivalenceRule = areEquivalent;
+
+export function areShallowEquivalent(
+previousValue: unknown,
+currentValue: unknown
+): boolean {
+  if (Object.is(previousValue, currentValue)) {
+    return true;
+  }
+
+  if (
+    previousValue === null ||
+    currentValue === null ||
+    typeof previousValue !== "object" ||
+    typeof currentValue !== "object"
+  ) {
+    return false;
+  }
+
+  if (
+    Object.getPrototypeOf(previousValue) !==
+    Object.getPrototypeOf(currentValue)
+  ) {
+    return false;
+  }
+
+  const previousKeys = Reflect.ownKeys(previousValue).filter(
+    (key) =>
+      Object.getOwnPropertyDescriptor(previousValue, key)?.enumerable
+  );
+
+  const currentKeys = Reflect.ownKeys(currentValue).filter(
+    (key) =>
+      Object.getOwnPropertyDescriptor(currentValue, key)?.enumerable
+  );
+
+  if (previousKeys.length !== currentKeys.length) {
+    return false;
+  }
+
+  return previousKeys.every((key) => {
+    if (!Object.prototype.hasOwnProperty.call(currentValue, key)) {
+      return false;
+    }
+
+    const previousDescriptor =
+      Object.getOwnPropertyDescriptor(previousValue, key);
+
+    const currentDescriptor =
+      Object.getOwnPropertyDescriptor(currentValue, key);
+
+    if (
+      !previousDescriptor ||
+      !currentDescriptor ||
+      !("value" in previousDescriptor) ||
+      !("value" in currentDescriptor)
+    ) {
+      return false;
+    }
+
+    return Object.is(
+      previousDescriptor.value,
+      currentDescriptor.value
+    );
+  });
+}
