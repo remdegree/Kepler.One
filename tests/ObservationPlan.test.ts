@@ -177,4 +177,50 @@ describe("ObservationPlan", () => {
 
     expect(plan.bodies).toHaveLength(1);
   });
+
+  it("supports global comparison configuration", () => {
+    const plan: ObservationPlan<{
+      name: string;
+    }> = {
+      mode: "all",
+      comparison: {
+        strategy: "value-only",
+        valueProperty: "value",
+        valueStrategy: "deep"
+      }
+    };
+
+    expect(plan.comparison?.strategy).toBe("value-only");
+    expect(plan.comparison?.valueProperty).toBe("value");
+  });
+
+  it("supports per-path comparison overrides", () => {
+    const plan: ObservationPlan<{
+      name: { value: string; isValid: boolean };
+      address: { city: string };
+    }> = {
+      mode: "all",
+      comparison: {
+        strategy: "deep"
+      },
+      bodies: [
+        {
+          path: "name",
+          comparison: {
+            strategy: "value-only",
+            valueProperty: "value"
+          }
+        },
+        {
+          path: "address",
+          comparison: {
+            strategy: "shallow"
+          }
+        }
+      ]
+    };
+
+    expect(plan.bodies?.[0].comparison?.strategy).toBe("value-only");
+    expect(plan.bodies?.[1].comparison?.strategy).toBe("shallow");
+  });
 });

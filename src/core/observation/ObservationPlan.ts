@@ -94,6 +94,8 @@ export type ObservationRule<TValues> = {
       previousValue: PathValue<TValues, P>,
       currentValue: PathValue<TValues, P>
     ) => boolean;
+
+    comparison?: ComparisonOptions;
   }
 }[ValuePath<TValues>];
 
@@ -103,4 +105,21 @@ export type ObservationRule<TValues> = {
 export interface ObservationPlan<TValues> {
   mode: ObservationMode;
   bodies?: ObservationRule<TValues>[];
+  comparison?: ComparisonOptions;
+}
+
+export type ComparisonStrategy =
+  | "deep"
+  | "shallow"
+  | "value-only";
+
+export type ValueComparisonStrategy =
+  | "deep"
+  | "shallow"
+  | "reference";
+
+export interface ComparisonOptions {
+  strategy?: ComparisonStrategy;
+  valueProperty?: string;
+  valueStrategy?: ValueComparisonStrategy;
 }

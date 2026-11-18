@@ -9,6 +9,7 @@
 
 export interface StarChartEntry<T> {
     id: string;
+    label?: string;
     createdAt: Date;
     values: T;
 }
@@ -136,6 +137,7 @@ export class StarChart<T>{
         const id = `chart-${++this.sequence}`;
         const entry: StarChartEntry<T> = {
             id,
+            label: options.label,
             createdAt: new Date(),
             values: cloneValue(values)
         };
@@ -214,5 +216,9 @@ export class StarChart<T>{
                 createdAt: new Date(entry.createdAt.getTime())
             })
         );
-    }    
+    }
+    
+    clone(values: T): T {
+        return cloneValue(values);
+    }
 }
