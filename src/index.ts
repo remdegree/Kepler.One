@@ -7,3 +7,4 @@
  */
 
 export * from './core/observatory';
+export * from './core/signals';
