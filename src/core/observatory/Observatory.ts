@@ -1,6 +1,7 @@
 import { ObservationPlan } from "../observation";
 import { analyzeDrift } from "../observation/DriftAnalyzer";
 import type { DriftAnalysisResult, OrbitalDrift } from "../observation/DriftAnalyzer";
+import { SignalRelay } from "../signals";
 import { StarChart } from "../snapshots";
 
 export interface ObservatoryOptions<TValues> {
@@ -16,6 +17,7 @@ export class Observatory<TValues> {
     private observing = false;
     private analysisResult: DriftAnalysisResult;
     private originChartId: string;
+    private readonly signalRelay = new SignalRelay();
 
     constructor(options: ObservatoryOptions<TValues>) {
         this.starChart = new StarChart<TValues>();
@@ -59,14 +61,37 @@ export class Observatory<TValues> {
         return this.observing;
     }
 
-    analyze(): DriftAnalysisResult {
-        this.analysisResult = analyzeDrift(
-            this.referenceOrbit,
-            this.liveEphemeris,
-            this.observationPlan
-        );
+    get signals(): SignalRelay {
+        return this.signalRelay;
+    }
 
-        return this.analysisResult;
+    analyze(): DriftAnalysisResult {
+    const previousResult = this.analysisResult;
+
+    const nextResult = analyzeDrift(
+        this.referenceOrbit,
+        this.liveEphemeris,
+        this.observationPlan
+    );
+
+    this.analysisResult = nextResult;
+
+    if (!previousResult.hasDrift && nextResult.hasDrift) {
+        this.signalRelay.emit("drift", nextResult);
+    }
+
+    if (
+        !previousResult.requiresAttention &&
+        nextResult.requiresAttention
+    ) {
+        this.signalRelay.emit("attention", nextResult);
+    }
+
+    if (previousResult.hasDrift && !nextResult.hasDrift) {
+        this.signalRelay.emit("clear", nextResult);
+    }
+
+    return nextResult;
     }
 
     update(values: TValues): DriftAnalysisResult {
@@ -80,12 +105,18 @@ export class Observatory<TValues> {
     }
 
     launch(): void {
+        if(this.observing) return;
+
         this.observing = true;
         this.analyze();
+        this.signalRelay.emit("launch", undefined);
     }
 
     suspend(): void {
+        if(!this.observing) return;
+
         this.observing = false;
+        this.signalRelay.emit("suspend", undefined);
     }
 
     reanchor(): void{

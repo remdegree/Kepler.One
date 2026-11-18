@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Observatory } from "../src/core/observatory/Observatory";
 import { StarChart } from "../src/core/snapshots";
 
@@ -244,5 +244,135 @@ describe("Observatory", () => {
         }
 
         expect(internal.starChart.list()).toHaveLength(initialCount);
+    });
+
+    it("emits launch and suspend signals", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        const launchCallback = vi.fn();
+        const suspendCallback = vi.fn();
+
+        observatory.signals.on("launch", launchCallback);
+        observatory.signals.on("suspend", suspendCallback);
+
+        observatory.launch();
+        observatory.suspend();
+
+        expect(launchCallback).toHaveBeenCalledOnce();
+        expect(suspendCallback).toHaveBeenCalledOnce();
+    });
+
+    it("emits drift when changes are detected", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        const driftCallback = vi.fn();
+
+        observatory.signals.on("drift", driftCallback);
+
+        observatory.launch();
+
+        observatory.update({
+            name: "Kepler",
+            department: "Research"
+        });
+
+        expect(driftCallback).toHaveBeenCalledOnce();
+        expect(driftCallback.mock.calls[0][0].hasDrift).toBe(true);
+    });
+
+    it("emits attention when a change requires attention", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan: {
+                mode: "all",
+                bodies: [
+                    {
+                        path: "department",
+                        alertWhen: () => true
+                    }
+                ]
+            }
+        });
+
+        const attentionCallback = vi.fn();
+
+        observatory.signals.on("attention", attentionCallback);
+
+        observatory.launch();
+
+        observatory.update({
+            name: "Kepler",
+            department: "Research"
+        });
+
+        expect(attentionCallback).toHaveBeenCalledOnce();
+        expect(
+            attentionCallback.mock.calls[0][0].requiresAttention
+        ).toBe(true);
+    });
+
+    it("emits clear when all detected drift is resolved", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        const clearCallback = vi.fn();
+
+        observatory.signals.on("clear", clearCallback);
+
+        observatory.launch();
+
+        observatory.update({
+            name: "Kepler",
+            department: "Research"
+        });
+
+        observatory.update({
+            name: "Kepler",
+            department: "Engineering"
+        });
+
+        expect(clearCallback).toHaveBeenCalledOnce();
+        expect(clearCallback.mock.calls[0][0].hasDrift).toBe(false);
+    });
+
+    it("does not emit duplicate launch signals", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        const callback = vi.fn();
+
+        observatory.signals.on("launch", callback);
+
+        observatory.launch();
+        observatory.launch();
+
+        expect(callback).toHaveBeenCalledOnce();
+    });
+
+    it("does not emit duplicate suspend signals", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        const callback = vi.fn();
+
+        observatory.signals.on("suspend", callback);
+
+        observatory.launch();
+        observatory.suspend();
+        observatory.suspend();
+
+        expect(callback).toHaveBeenCalledOnce();
     });
 });
