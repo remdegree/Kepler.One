@@ -375,4 +375,110 @@ describe("Observatory", () => {
 
         expect(callback).toHaveBeenCalledOnce();
     });
+
+    it("returns the same snapshot reference until state changes", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        const first = observatory.getSnapshot();
+        const second = observatory.getSnapshot();
+
+        expect(first).toBe(second);
+    });
+
+    it("publishes a new snapshot after analysis", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        const previousSnapshot = observatory.getSnapshot();
+
+        observatory.launch();
+
+        const nextSnapshot = observatory.getSnapshot();
+
+        expect(nextSnapshot).not.toBe(previousSnapshot);
+        expect(nextSnapshot.isObserving).toBe(true);
+    });
+
+    it("publishes a new snapshot when suspended", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        observatory.launch();
+
+        const previousSnapshot = observatory.getSnapshot();
+
+        observatory.suspend();
+
+        const nextSnapshot = observatory.getSnapshot();
+
+        expect(nextSnapshot).not.toBe(previousSnapshot);
+        expect(nextSnapshot.isObserving).toBe(false);
+    });
+
+    it("notifies subscribers when the snapshot changes", () => {
+        const observatory = new Observatory({
+            values,
+            observationPlan
+        });
+
+        const callback = vi.fn();
+
+        const unsubscribe = observatory.subscribe(callback);
+
+        observatory.launch();
+
+        expect(callback).toHaveBeenCalledOnce();
+
+        unsubscribe();
+        callback.mockClear();
+
+        observatory.suspend();
+
+        expect(callback).not.toHaveBeenCalled();
+    });
+
+    it("reanchors both states using confirmed values", () => {
+        const observatory = new Observatory({
+            values: {name: "Ada"},
+            observationPlan: {
+                mode: "selected",
+                bodies: [{path: "name"}]
+            }
+        });
+
+        observatory.launch();
+        observatory.update({name: "Grace"});
+        
+        expect(observatory.hasDrift).toBe(true);
+
+        observatory.reanchor({name: "Grace Hopper"});
+
+        expect(observatory.hasDrift).toBe(false);
+        expect(observatory.driftCount).toBe(0);
+    });
+
+    it("does not retain mutable references to confirmed values", () => {
+        const observatory = new Observatory({
+            values: {name: "Ada"},
+            observationPlan: {
+                mode: "selected",
+                bodies: [{path: "name"}]
+            }
+        });
+
+        const confirmedValues = { name: "Grace" };
+
+        observatory.reanchor(confirmedValues);
+        
+        confirmedValues.name = "Changed externally";
+
+        expect(observatory.hasDrift).toBe(false);
+    });
 });

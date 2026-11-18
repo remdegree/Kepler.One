@@ -8,3 +8,4 @@
 
 export * from './core/observatory';
 export * from './core/signals';
+export * from './react';
